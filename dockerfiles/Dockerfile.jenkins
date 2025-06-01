@@ -1,0 +1,36 @@
+# === Stage 1: Build plugins ===
+FROM jenkins/jenkins:lts as plugin-builder
+
+USER root
+
+# Copy plugin list
+COPY plugins.txt /usr/share/jenkins/ref/plugins.txt
+
+# Install plugins
+RUN jenkins-plugin-cli --plugin-file /usr/share/jenkins/ref/plugins.txt && \
+    mkdir -p /plugins && \
+    cp -r /usr/share/jenkins/ref/plugins /plugins
+
+# === Stage 2: Final runtime image ===
+FROM jenkins/jenkins:lts
+
+USER root
+
+# Copy plugins from builder stage
+COPY --from=plugin-builder /plugins /usr/share/jenkins/ref/plugins
+
+# Copy JCasC configuration
+COPY jenkins.yaml /var/jenkins_home/jenkins.yaml
+
+# Set environment variable to load JCasC config
+ENV CASC_JENKINS_CONFIG=/var/jenkins_home/jenkins.yaml
+
+# Create non-root user
+RUN groupadd -g 1001 jenkinsuser && \
+    useradd -u 1001 -g 1001 -m -d /home/jenkinsuser -s /bin/bash jenkinsuser && \
+    chown -R jenkinsuser:jenkinsuser /var/jenkins_home
+
+USER jenkinsuser
+
+# Expose Jenkins port
+EXPOSE 8080
