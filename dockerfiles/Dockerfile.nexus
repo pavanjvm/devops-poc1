@@ -1,0 +1,23 @@
+# Use official Nexus 3 OSS image
+FROM sonatype/nexus3:3.68.1
+
+# Switch to root to perform setup (file cleanup, permission fixes)
+USER root
+
+# Remove temporary/cache files to reduce image size
+RUN rm -rf /opt/sonatype/sonatype-work/nexus3/cache \
+           /opt/sonatype/sonatype-work/nexus3/tmp
+
+# Create a non-root user for better security
+RUN groupadd -r nexus && \
+    useradd -r -g nexus -d /opt/sonatype/nexus -s /sbin/nologin nexus && \
+    chown -R nexus:nexus /opt/sonatype
+
+# Drop to non-root user
+USER nexus
+
+# Expose default Nexus port
+EXPOSE 8081
+
+# Set the default command to run Nexus
+ENTRYPOINT ["/opt/sonatype/nexus/bin/nexus", "run"]
